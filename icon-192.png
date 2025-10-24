@@ -1,0 +1,39 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="96" cy="96" r="88" fill="#1a1a1a" stroke="#4CAF50" stroke-width="8"/>
+  
+  <!-- 主图标 - 时钟样式 -->
+  <circle cx="96" cy="96" r="60" fill="#2d2d2d" stroke="#4CAF50" stroke-width="3"/>
+  
+  <!-- 时钟刻度 -->
+  <g stroke="#4CAF50" stroke-width="2">
+    <!-- 12点 -->
+    <line x1="96" y1="46" x2="96" y2="56" stroke-width="3"/>
+    <!-- 3点 -->
+    <line x1="146" y1="96" x2="136" y2="96" stroke-width="3"/>
+    <!-- 6点 -->
+    <line x1="96" y1="146" x2="96" y2="136" stroke-width="3"/>
+    <!-- 9点 -->
+    <line x1="46" y1="96" x2="56" y2="96" stroke-width="3"/>
+    
+    <!-- 其他刻度 -->
+    <line x1="127" y1="69" x2="122" y2="74"/>
+    <line x1="127" y1="123" x2="122" y2="118"/>
+    <line x1="69" y1="69" x2="74" y2="74"/>
+    <line x1="69" y1="123" x2="74" y2="118"/>
+  </g>
+  
+  <!-- 时钟指针 -->
+  <g stroke="#4CAF50" stroke-width="3" stroke-linecap="round">
+    <!-- 时针 -->
+    <line x1="96" y1="96" x2="96" y2="76"/>
+    <!-- 分针 -->
+    <line x1="96" y1="96" x2="116" y2="96"/>
+  </g>
+  
+  <!-- 中心点 -->
+  <circle cx="96" cy="96" r="4" fill="#4CAF50"/>
+  
+  <!-- BOSS文字 -->
+  <text x="96" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#4CAF50">BOSS</text>
+</svg>

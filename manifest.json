@@ -1,0 +1,49 @@
+{
+  "name": "NYKD BOSS刷新时间表",
+  "short_name": "BOSS刷新",
+  "description": "逆水寒手游BOSS刷新时间管理工具",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#4CAF50",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "lang": "zh-CN",
+  "categories": ["games", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "查看今日BOSS",
+      "short_name": "今日BOSS",
+      "description": "快速查看今日BOSS刷新时间",
+      "url": "./index.html#today",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
