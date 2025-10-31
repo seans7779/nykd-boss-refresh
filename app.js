@@ -74,6 +74,7 @@ class BossRefreshApp {
     // 初始化用户界面
     initializeUI() {
         this.populateServerSelect();
+        this.populateBossLevelSelect();
         this.setCurrentTime();
         this.setCurrentDate();
     }
@@ -91,6 +92,30 @@ class BossRefreshApp {
             option.value = server;
             option.textContent = server;
             serverSelect.appendChild(option);
+        });
+    }
+
+    // 填充BOSS等级选择下拉框
+    populateBossLevelSelect() {
+        const bossLevelSelect = document.getElementById('bossLevel');
+        
+        // 清空现有选项
+        bossLevelSelect.innerHTML = '<option value="">请选择BOSS等级</option>';
+        
+        // 获取所有已存在的BOSS等级
+        const allLevels = new Set();
+        Object.keys(this.servers).forEach(serverName => {
+            Object.keys(this.servers[serverName]).forEach(level => {
+                allLevels.add(parseInt(level));
+            });
+        });
+        
+        // 按等级排序并添加到选择框
+        Array.from(allLevels).sort((a, b) => a - b).forEach(level => {
+            const option = document.createElement('option');
+            option.value = level;
+            option.textContent = `${level}级BOSS`;
+            bossLevelSelect.appendChild(option);
         });
     }
 
@@ -207,6 +232,7 @@ class BossRefreshApp {
         
         if (added) {
             this.saveToStorage();
+            this.populateBossLevelSelect(); // 刷新BOSS等级选择框
             return true;
         }
         
