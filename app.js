@@ -827,7 +827,7 @@ function calculateBossTime() {
 // 显示所有BOSS列表
 function showBossList() {
     const bossListDiv = document.getElementById('bossList');
-    const bossListContent = document.getElementById('bossListContent');
+    bossListContent = document.getElementById('bossListContent');
     
     let html = '';
     
@@ -1124,7 +1124,7 @@ function saveManageBossImage() {
             alert('图片保存失败！');
         }
     };
-    reader.readAsDataURL(imageFile);
+    reader.readAsDataURL(file);
 }
 
 // 加载BOSS图片列表
@@ -1489,6 +1489,42 @@ function toggleBossManagement() {
     } else {
         form.style.display = 'none';
     }
+}
+
+function clearAppCache() {
+    const btn = document.getElementById('clearCacheBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '正在清除缓存...';
+    }
+    (async () => {
+        try {
+            // 注销 Service Worker
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map(r => r.unregister()));
+            }
+            // 清理 CacheStorage
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(k => caches.delete(k)));
+            }
+            // 使用时间戳参数进行强制刷新，避免命中HTTP缓存
+            const url = new URL(window.location.href);
+            url.searchParams.set('t', Date.now().toString());
+            // 延迟一点点，确保SW注销生效
+            setTimeout(() => {
+                window.location.replace(url.toString());
+            }, 150);
+        } catch (err) {
+            console.error('清除缓存失败:', err);
+            alert('清除缓存失败，请手动刷新或在浏览器设置中清理缓存');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '🔄 清除缓存';
+            }
+        }
+    })();
 }
 
 // 加载服务器列表

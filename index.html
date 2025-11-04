@@ -955,13 +955,39 @@
                 justify-content: center;
             }
         }
-    </style>
+    /* 清除缓存按钮样式 */
+.clear-cache-btn {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #00c853, #00e676);
+    color: #0a0a0a;
+    border: 1px solid #2e7d32;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 0 12px rgba(0, 230, 118, 0.3);
+    transition: all 0.2s ease;
+}
+.clear-cache-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 16px rgba(0, 230, 118, 0.4);
+}
+.clear-cache-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    filter: grayscale(20%);
+}
+</style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>诺亚传说BOSS刷新</h1>
             <p>精准计算BOSS复活时间</p>
+            <button id="clearCacheBtn" class="clear-cache-btn" onclick="clearAppCache()">
+                🔄 清除缓存
+            </button>
         </div>
 
         <div class="form-group">
@@ -1185,6 +1211,43 @@
                 console.log('PWA: 应用已安装');
                 installButton.style.display = 'none';
             });
+        </script>
+
+        <!-- 清除缓存逻辑 -->
+        <script>
+            async function clearAppCache() {
+                const btn = document.getElementById('clearCacheBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = '清理中…';
+                }
+                try {
+                    // 注销所有Service Worker
+                    if ('serviceWorker' in navigator) {
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(regs.map(r => r.unregister()));
+                    }
+                    // 清理所有Cache Storage
+                    if ('caches' in window) {
+                        const keys = await caches.keys();
+                        await Promise.all(keys.map(k => caches.delete(k)));
+                    }
+                    // 清理本地存储数据
+                    try { localStorage.removeItem('nykd-boss-data'); } catch (e) {}
+                    // 强制带缓存破坏参数刷新
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('_', Date.now().toString());
+                    if (btn) btn.textContent = '已清理，正在刷新…';
+                    window.location.replace(url.toString());
+                } catch (err) {
+                    console.error('清除缓存失败:', err);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = '🔄 清除缓存';
+                    }
+                    alert('清除缓存失败，请手动刷新或重启浏览器。');
+                }
+            }
         </script>
 
         <!-- 编辑模态框 -->
