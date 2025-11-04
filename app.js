@@ -104,6 +104,13 @@ class BossRefreshApp {
         
         // 获取所有已存在的BOSS等级
         const allLevels = new Set();
+        
+        // 首先添加默认BOSS等级
+        this.defaultBossLevels.forEach(level => {
+            allLevels.add(level);
+        });
+        
+        // 然后添加服务器中已存在的其他BOSS等级
         Object.keys(this.servers).forEach(serverName => {
             Object.keys(this.servers[serverName]).forEach(level => {
                 allLevels.add(parseInt(level));
