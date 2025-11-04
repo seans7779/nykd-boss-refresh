@@ -780,6 +780,150 @@
             background: #00ff88;
         }
 
+        /* 管理界面样式 */
+        .management-section-item {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .management-section-item h5 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .input-group input,
+        .input-group select {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .input-group .btn {
+            flex-shrink: 0;
+        }
+
+        .items-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 4px;
+            background: #2a2a2a;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid #333;
+            transition: all 0.3s ease;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-row:hover {
+            background: #333;
+        }
+
+        .item-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .item-name {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .item-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .item-status.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .item-status.inactive {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            min-height: auto;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4444, #cc3333);
+            border-color: #ff4444;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #ff6666, #ff4444);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+        }
+
+        .btn-edit {
+            background: linear-gradient(135deg, #ffa500, #ff8c00);
+            border-color: #ffa500;
+        }
+
+        .btn-edit:hover {
+            background: linear-gradient(135deg, #ffb733, #ffa500);
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.3);
+        }
+
+        .current-image {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+
+        .current-image h6 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .current-image img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            margin-bottom: 10px;
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 10px;
@@ -788,6 +932,27 @@
             
             .header h1 {
                 font-size: 20px;
+            }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .input-group input,
+            .input-group select,
+            .input-group .btn {
+                width: 100%;
+            }
+
+            .item-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .item-actions {
+                justify-content: center;
             }
         }
     </style>
@@ -845,7 +1010,7 @@
             </select>
         </div>
 
-        <button class="btn" onclick="calculateBossTime()">计算当天所有刷新时间</button>
+        <button class="btn" onclick="calculateBossTime()">计算当天刷新时间</button>
         <button class="btn btn-secondary" onclick="showBossList()">查看所有BOSS时间</button>
         <button class="btn" onclick="showBossTimeline()">BOSS时间线</button>
         <!-- <button class="btn btn-secondary" onclick="toggleReminders()">开启/关闭提醒</button> -->
@@ -883,52 +1048,70 @@
 
         <div class="management-section">
             <h3>管理功能</h3>
-            <button class="btn" onclick="toggleAddServer()">添加新服务器</button>
-            <button class="btn" onclick="toggleAddBoss()">添加新BOSS</button>
-            <button class="btn" onclick="toggleManageBossImages()">管理BOSS图片</button>
+            <button class="btn" onclick="toggleServerManagement()">服务器管理</button>
+            <button class="btn" onclick="toggleBossManagement()">BOSS管理</button>
             
-            <div id="addServerForm" class="add-form">
-                <h4>添加新服务器</h4>
-                <input type="text" id="newServerName" placeholder="服务器名称">
-                <button class="btn" onclick="addNewServer()">确认添加</button>
+            <!-- 服务器管理界面 -->
+            <div id="serverManagementForm" class="add-form">
+                <h4>服务器管理</h4>
+                
+                <!-- 添加新服务器 -->
+                <div class="management-section-item">
+                    <h5>添加新服务器</h5>
+                    <div class="input-group">
+                        <input type="text" id="newServerName" placeholder="服务器名称">
+                        <button class="btn" onclick="addNewServer()">添加服务器</button>
+                    </div>
+                </div>
+                
+                <!-- 服务器列表 -->
+                <div class="management-section-item">
+                    <h5>服务器列表</h5>
+                    <div id="serversList" class="items-list"></div>
+                </div>
             </div>
             
-            <div id="addBossForm" class="add-form">
-                <h4>添加新BOSS</h4>
-                <input type="number" id="newBossLevel" placeholder="BOSS等级">
+            <!-- BOSS管理界面 -->
+            <div id="bossManagementForm" class="add-form">
+                <h4>BOSS管理</h4>
                 
-                <div class="image-upload-section">
-                    <label for="bossImageUpload">上传BOSS点位图：</label>
-                    <input type="file" id="bossImageUpload" accept="image/*" onchange="previewBossImage(this)">
+                <!-- 添加新BOSS -->
+                <div class="management-section-item">
+                    <h5>添加新BOSS</h5>
+                    <div class="input-group">
+                        <input type="number" id="newBossLevel" placeholder="BOSS等级 (1-100)" min="1" max="100">
+                        <button class="btn" onclick="addNewBoss()">添加BOSS</button>
+                    </div>
+                </div>
+                
+                <!-- BOSS列表 -->
+                <div class="management-section-item">
+                    <h5>BOSS列表</h5>
+                    <div id="bossManagementList" class="items-list"></div>
+                </div>
+                
+                <!-- BOSS图片管理 -->
+                <div class="management-section-item">
+                    <h5>BOSS图片管理</h5>
+                    <div class="input-group">
+                        <select id="manageBossLevel">
+                            <option value="">请选择BOSS等级</option>
+                        </select>
+                        <input type="file" id="bossImageUpload" accept="image/*" onchange="previewBossImage(this)">
+                        <button class="btn" onclick="saveBossImage()">保存图片</button>
+                    </div>
+                    
                     <div id="imagePreview" class="image-preview" style="display: none;">
                         <img id="previewImg" src="" alt="预览图">
-                        <button type="button" class="remove-image-btn" onclick="removeBossImage()">×</button>
-                    </div>
-                </div>
-                
-                <button class="btn" onclick="addNewBoss()">确认添加</button>
-            </div>
-
-            <div id="manageBossImagesForm" class="add-form">
-                <h4>管理BOSS图片</h4>
-                
-                <div class="image-upload-section">
-                    <label for="manageBossLevel">选择BOSS等级：</label>
-                    <select id="manageBossLevel">
-                        <option value="">请选择BOSS等级</option>
-                    </select>
-                    
-                    <label for="manageImageUpload">上传/更换点位图：</label>
-                    <input type="file" id="manageImageUpload" accept="image/*" onchange="previewManageImage(this)">
-                    <div id="manageImagePreview" class="image-preview" style="display: none;">
-                        <img id="managePreviewImg" src="" alt="预览图">
-                        <button type="button" class="remove-image-btn" onclick="removeManageImage()">×</button>
+                        <button type="button" class="remove-image-btn" onclick="removeBossImagePreview()">×</button>
                     </div>
                     
-                    <button class="btn" onclick="saveManageBossImage()">保存图片</button>
+                    <div id="currentBossImage" class="current-image" style="display: none;">
+                        <h6>当前图片：</h6>
+                        <img id="currentImg" src="" alt="当前BOSS图片">
+                        <button class="btn btn-danger" onclick="deleteBossImage()">删除图片</button>
+                    </div>
                 </div>
-                
-                <div id="bossImagesList"></div>
             </div>
         </div>
     </div>
@@ -1003,5 +1186,75 @@
                 installButton.style.display = 'none';
             });
         </script>
+
+        <!-- 编辑模态框 -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeEditModal()">&times;</span>
+                <h3 id="editModalTitle">编辑</h3>
+                <div class="input-group">
+                    <label id="editModalLabel">名称:</label>
+                    <input type="text" id="editModalInput" placeholder="请输入新名称" onkeydown="handleEditKeydown(event)">
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" onclick="confirmEdit()">确认</button>
+                    <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+            }
+
+            .modal-content {
+                background-color: #fefefe;
+                margin: 15% auto;
+                padding: 20px;
+                border: none;
+                border-radius: 8px;
+                width: 300px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            .close:hover,
+            .close:focus {
+                color: black;
+                text-decoration: none;
+            }
+
+            .modal-buttons {
+                margin-top: 15px;
+                text-align: right;
+            }
+
+            .modal-buttons .btn {
+                margin-left: 10px;
+            }
+
+            #editModalInput {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+        </style>
     </body>
     </html>

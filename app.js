@@ -658,6 +658,89 @@ class BossRefreshApp {
         const filename = `BOSS刷新时间表-${startDate}至${endDate}.ics`;
         this.downloadICSFile(icsString, filename);
     }
+
+    // 删除服务器
+    deleteServer(serverName) {
+        if (this.servers[serverName]) {
+            delete this.servers[serverName];
+            this.saveToStorage();
+            this.populateServerSelect();
+            return true;
+        }
+        return false;
+    }
+
+    // 重命名服务器
+    renameServer(oldName, newName) {
+        if (this.servers[oldName] && !this.servers[newName]) {
+            this.servers[newName] = this.servers[oldName];
+            delete this.servers[oldName];
+            this.saveToStorage();
+            this.populateServerSelect();
+            return true;
+        }
+        return false;
+    }
+
+    // 删除BOSS等级（从所有服务器）
+    deleteBossFromAllServers(bossLevel) {
+        let deleted = false;
+        Object.keys(this.servers).forEach(serverName => {
+            if (this.servers[serverName][bossLevel]) {
+                delete this.servers[serverName][bossLevel];
+                deleted = true;
+            }
+        });
+        
+        if (deleted) {
+            this.saveToStorage();
+            this.populateBossLevelSelect();
+        }
+        return deleted;
+    }
+
+    // 重命名BOSS等级
+    renameBossLevel(oldLevel, newLevel) {
+        if (oldLevel === newLevel) return false;
+        
+        let renamed = false;
+        Object.keys(this.servers).forEach(serverName => {
+            if (this.servers[serverName][oldLevel]) {
+                this.servers[serverName][newLevel] = this.servers[serverName][oldLevel];
+                delete this.servers[serverName][oldLevel];
+                renamed = true;
+            }
+        });
+        
+        // 移动图片数据
+        if (this.bossImages[oldLevel]) {
+            this.bossImages[newLevel] = this.bossImages[oldLevel];
+            delete this.bossImages[oldLevel];
+        }
+        
+        if (renamed) {
+            this.saveToStorage();
+            this.populateBossLevelSelect();
+        }
+        return renamed;
+    }
+
+    // 获取所有BOSS等级
+    getAllBossLevels() {
+        const allBossLevels = new Set();
+        
+        // 添加默认BOSS等级
+        this.defaultBossLevels.forEach(level => allBossLevels.add(level));
+        
+        // 添加服务器中的BOSS等级
+        Object.values(this.servers).forEach(server => {
+            Object.keys(server).forEach(level => {
+                allBossLevels.add(parseInt(level));
+            });
+        });
+        
+        return Array.from(allBossLevels).sort((a, b) => a - b);
+    }
 }
 
 // 全局应用实例
@@ -869,8 +952,8 @@ function addNewServer() {
     
     if (app.addServer(serverName)) {
         alert('服务器添加成功！');
-        document.getElementById('addServerForm').classList.remove('active');
         document.getElementById('newServerName').value = '';
+        loadServersList(); // 刷新服务器列表
     } else {
         alert('服务器已存在或添加失败！');
     }
@@ -898,10 +981,11 @@ function addNewBoss() {
             const imageData = e.target.result;
             if (app.addBossToAllServers(bossLevel, imageData)) {
                 alert(`${bossLevel}级BOSS已添加到所有服务器！`);
-                document.getElementById('addBossForm').classList.remove('active');
                 document.getElementById('newBossLevel').value = '';
                 document.getElementById('bossImageUpload').value = '';
                 document.getElementById('imagePreview').style.display = 'none';
+                loadBossList(); // 刷新BOSS列表
+                loadManageBossLevels(); // 刷新管理界面的BOSS选择
             } else {
                 alert('所有服务器都已存在该等级BOSS！');
             }
@@ -911,8 +995,9 @@ function addNewBoss() {
         // 没有图片，直接添加BOSS
         if (app.addBossToAllServers(bossLevel)) {
             alert(`${bossLevel}级BOSS已添加到所有服务器！`);
-            document.getElementById('addBossForm').classList.remove('active');
             document.getElementById('newBossLevel').value = '';
+            loadBossList(); // 刷新BOSS列表
+            loadManageBossLevels(); // 刷新管理界面的BOSS选择
         } else {
             alert('所有服务器都已存在该等级BOSS！');
         }
@@ -1374,3 +1459,317 @@ function showCalendarCleanupInstructions() {
     const instructions = app.getCalendarCleanupInstructions();
     alert(instructions);
 }
+
+// ==================== 新的管理功能 ====================
+
+// 切换服务器管理界面
+function toggleServerManagement() {
+    const form = document.getElementById('serverManagementForm');
+    const bossForm = document.getElementById('bossManagementForm');
+    
+    if (form.style.display === 'none' || form.style.display === '') {
+        form.style.display = 'block';
+        bossForm.style.display = 'none';
+        loadServersList();
+    } else {
+        form.style.display = 'none';
+    }
+}
+
+// 切换BOSS管理界面
+function toggleBossManagement() {
+    const form = document.getElementById('bossManagementForm');
+    const serverForm = document.getElementById('serverManagementForm');
+    
+    if (form.style.display === 'none' || form.style.display === '') {
+        form.style.display = 'block';
+        serverForm.style.display = 'none';
+        loadBossList();
+        loadManageBossLevels();
+    } else {
+        form.style.display = 'none';
+    }
+}
+
+// 加载服务器列表
+function loadServersList() {
+    const serversList = document.getElementById('serversList');
+    serversList.innerHTML = '';
+    
+    Object.keys(app.servers).forEach(serverName => {
+        const serverRow = document.createElement('div');
+        serverRow.className = 'item-row';
+        
+        const bossCount = Object.keys(app.servers[serverName]).length;
+        
+        serverRow.innerHTML = `
+            <div class="item-info">
+                <span class="item-name">${serverName}</span>
+                <span class="item-status active">${bossCount} 个BOSS</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn btn-small btn-edit" onclick="editServer('${serverName}')">编辑</button>
+                <button class="btn btn-small btn-danger" onclick="deleteServer('${serverName}')">删除</button>
+            </div>
+        `;
+        
+        serversList.appendChild(serverRow);
+    });
+}
+
+// 加载BOSS列表
+function loadBossList() {
+    const bossList = document.getElementById('bossManagementList');
+    bossList.innerHTML = '';
+    
+    // 获取所有BOSS等级
+    const allBossLevels = new Set();
+    Object.values(app.servers).forEach(server => {
+        Object.keys(server).forEach(level => {
+            allBossLevels.add(parseInt(level));
+        });
+    });
+    
+    // 添加默认BOSS等级
+    app.defaultBossLevels.forEach(level => allBossLevels.add(level));
+    
+    // 排序并显示
+    Array.from(allBossLevels).sort((a, b) => a - b).forEach(bossLevel => {
+        const bossRow = document.createElement('div');
+        bossRow.className = 'item-row';
+        
+        const hasImage = app.getBossImage(bossLevel) ? true : false;
+        const serverCount = Object.keys(app.servers).filter(serverName => 
+            app.servers[serverName][bossLevel]
+        ).length;
+        
+        bossRow.innerHTML = `
+            <div class="item-info">
+                <span class="item-name">BOSS ${bossLevel}级</span>
+                <span class="item-status ${hasImage ? 'active' : 'inactive'}">
+                    ${hasImage ? '有图片' : '无图片'}
+                </span>
+                <span class="item-status active">${serverCount} 个服务器</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn btn-small btn-edit" onclick="editBoss(${bossLevel})">编辑</button>
+                <button class="btn btn-small btn-danger" onclick="deleteBoss(${bossLevel})">删除</button>
+            </div>
+        `;
+        
+        bossList.appendChild(bossRow);
+    });
+}
+
+// 处理编辑模态框的键盘事件
+function handleEditKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        confirmEdit();
+    } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeEditModal();
+    }
+}
+
+// 模态框相关变量
+let currentEditType = '';
+let currentEditTarget = '';
+
+// 显示编辑模态框
+function showEditModal(type, target, currentValue, label) {
+    currentEditType = type;
+    currentEditTarget = target;
+    
+    document.getElementById('editModalTitle').textContent = `编辑${type === 'server' ? '服务器' : 'BOSS等级'}`;
+    document.getElementById('editModalLabel').textContent = label;
+    document.getElementById('editModalInput').value = currentValue;
+    document.getElementById('editModalInput').placeholder = `请输入新的${label}`;
+    document.getElementById('editModal').style.display = 'block';
+    
+    // 聚焦到输入框
+    setTimeout(() => {
+        document.getElementById('editModalInput').focus();
+        document.getElementById('editModalInput').select();
+    }, 100);
+}
+
+// 关闭编辑模态框
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    currentEditType = '';
+    currentEditTarget = '';
+}
+
+// 确认编辑
+function confirmEdit() {
+    const newValue = document.getElementById('editModalInput').value.trim();
+    
+    if (!newValue) {
+        alert('请输入有效的值！');
+        return;
+    }
+    
+    if (currentEditType === 'server') {
+        if (newValue !== currentEditTarget) {
+            if (app.renameServer(currentEditTarget, newValue)) {
+                loadServersList();
+                alert('服务器名称修改成功！');
+                closeEditModal();
+            } else {
+                alert('服务器名称已存在或修改失败！');
+            }
+        } else {
+            closeEditModal();
+        }
+    } else if (currentEditType === 'boss') {
+        const newLevel = parseInt(newValue);
+        const oldLevel = parseInt(currentEditTarget);
+        
+        if (isNaN(newLevel) || newLevel < 1 || newLevel > 100) {
+            alert('请输入有效的BOSS等级 (1-100)！');
+            return;
+        }
+        
+        if (newLevel !== oldLevel) {
+            // 检查新等级是否已存在
+            const existingLevels = app.getAllBossLevels();
+            if (existingLevels.includes(newLevel)) {
+                alert('该BOSS等级已存在！');
+                return;
+            }
+            
+            if (app.renameBossLevel(oldLevel, newLevel)) {
+                loadBossList();
+                loadManageBossLevels();
+                alert('BOSS等级修改成功！');
+                closeEditModal();
+            } else {
+                alert('BOSS等级修改失败！');
+            }
+        } else {
+            closeEditModal();
+        }
+    }
+}
+
+// 编辑服务器
+function editServer(serverName) {
+    showEditModal('server', serverName, serverName, '服务器名称');
+}
+
+// 删除服务器
+function deleteServer(serverName) {
+    if (confirm(`确定要删除服务器 "${serverName}" 吗？\n这将删除该服务器的所有BOSS数据！`)) {
+        if (app.deleteServer(serverName)) {
+            loadServersList();
+            alert('服务器删除成功！');
+        } else {
+            alert('服务器删除失败！');
+        }
+    }
+}
+
+// 编辑BOSS
+function editBoss(bossLevel) {
+    showEditModal('boss', bossLevel, bossLevel, 'BOSS等级 (1-100)');
+}
+
+// 删除BOSS
+function deleteBoss(bossLevel) {
+    if (confirm(`确定要删除 ${bossLevel}级 BOSS吗？\n这将删除所有服务器中该等级的BOSS数据和图片！`)) {
+        // 删除BOSS等级
+        app.deleteBossFromAllServers(bossLevel);
+        
+        // 删除图片数据
+        app.deleteBossImage(bossLevel);
+        
+        loadBossList();
+        loadManageBossLevels();
+        alert('BOSS删除成功！');
+    }
+}
+
+// 保存BOSS图片
+function saveBossImage() {
+    const bossLevel = document.getElementById('manageBossLevel').value;
+    const fileInput = document.getElementById('bossImageUpload');
+    
+    if (!bossLevel) {
+        alert('请先选择BOSS等级！');
+        return;
+    }
+    
+    if (!fileInput.files || !fileInput.files[0]) {
+        alert('请先选择图片文件！');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        app.updateBossImage(parseInt(bossLevel), e.target.result);
+        loadBossList();
+        showCurrentBossImage(parseInt(bossLevel));
+        
+        // 清空文件输入和预览
+        fileInput.value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        
+        alert('BOSS图片保存成功！');
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// 显示当前BOSS图片
+function showCurrentBossImage(bossLevel) {
+    const currentImageDiv = document.getElementById('currentBossImage');
+    const currentImg = document.getElementById('currentImg');
+    const bossImage = app.getBossImage(bossLevel);
+    
+    if (bossImage) {
+        currentImg.src = bossImage;
+        currentImageDiv.style.display = 'block';
+    } else {
+        currentImageDiv.style.display = 'none';
+    }
+}
+
+// 删除BOSS图片
+function deleteBossImage() {
+    const bossLevel = document.getElementById('manageBossLevel').value;
+    if (!bossLevel) {
+        alert('请先选择BOSS等级！');
+        return;
+    }
+    
+    if (confirm(`确定要删除 ${bossLevel}级 BOSS的图片吗？`)) {
+        app.deleteBossImage(parseInt(bossLevel));
+        loadBossList();
+        document.getElementById('currentBossImage').style.display = 'none';
+        alert('BOSS图片删除成功！');
+    }
+}
+
+// 移除图片预览
+function removeBossImagePreview() {
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('bossImageUpload').value = '';
+}
+
+// 监听BOSS等级选择变化
+document.addEventListener('DOMContentLoaded', function() {
+    const manageBossLevel = document.getElementById('manageBossLevel');
+    if (manageBossLevel) {
+        manageBossLevel.addEventListener('change', function() {
+            const bossLevel = parseInt(this.value);
+            if (bossLevel) {
+                showCurrentBossImage(bossLevel);
+            } else {
+                document.getElementById('currentBossImage').style.display = 'none';
+            }
+        });
+    }
+});
