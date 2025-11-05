@@ -6,7 +6,7 @@
     <title>诺亚传说BOSS刷新时间</title>
     
     <!-- PWA Meta Tags -->
-    <meta name="description" content="逆水寒手游BOSS刷新时间管理工具">
+    <meta name="description" content="诺亚传说手游BOSS刷新时间管理工具">
     <meta name="theme-color" content="#4CAF50">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1076,6 +1076,8 @@
             <h3>管理功能</h3>
             <button class="btn" onclick="toggleServerManagement()">服务器管理</button>
             <button class="btn" onclick="toggleBossManagement()">BOSS管理</button>
+            <button class="btn" onclick="toggleImportExport()">导入/导出</button>
+            <button class="btn" onclick="toggleDailyBrief()">每日简报</button>
             
             <!-- 服务器管理界面 -->
             <div id="serverManagementForm" class="add-form">
@@ -1136,6 +1138,56 @@
                         <h6>当前图片：</h6>
                         <img id="currentImg" src="" alt="当前BOSS图片">
                         <button class="btn btn-danger" onclick="deleteBossImage()">删除图片</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 导入/导出时间线 -->
+            <div id="importExportSection" class="add-form">
+                <h4>导入/导出BOSS时间线</h4>
+                <div class="management-section-item">
+                    <h5>按服务器导出指定日期</h5>
+                    <div class="input-group">
+                        <select id="exportServerSelect">
+                            <option value="">请选择服务器</option>
+                        </select>
+                        <input type="date" id="exportDateInput">
+                        <button class="btn btn-secondary" onclick="onExportServerTimeline()">导出JSON文件</button>
+                        <button class="btn" onclick="onCopyExportJSON()">复制JSON</button>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="exportJsonPreview" placeholder="导出预览（只读）" readonly style="width:100%;min-height:120px;"></textarea>
+                    </div>
+                </div>
+                <div class="management-section-item">
+                    <h5>导入时间线（粘贴JSON）</h5>
+                    <div class="input-group">
+                        <select id="importModeSelect">
+                            <option value="replace">替换该服务器该日期全部数据</option>
+                            <option value="merge">合并（同日期同等级替换）</option>
+                        </select>
+                        <button class="btn btn-danger" onclick="onImportTimeline()">导入并应用</button>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="importJsonText" placeholder="在此粘贴要导入的JSON" style="width:100%;min-height:140px;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 每日简报输出 -->
+            <div id="dailyBriefSection" class="add-form">
+                <h4>每日BOSS时间线简报</h4>
+                <div class="management-section-item">
+                    <div class="input-group">
+                        <select id="briefServerSelect">
+                            <option value="ALL">全部服务器</option>
+                        </select>
+                        <input type="date" id="briefDateInput">
+                        <button class="btn" onclick="onGenerateBrief()">生成简报</button>
+                        <button class="btn btn-secondary" onclick="copyBriefToClipboard()">复制简报</button>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="dailyBriefOutput" placeholder="每日简报输出（只读）" readonly style="width:100%;min-height:160px;"></textarea>
                     </div>
                 </div>
             </div>

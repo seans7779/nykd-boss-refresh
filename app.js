@@ -77,6 +77,8 @@ class BossRefreshApp {
         this.populateBossLevelSelect();
         this.setCurrentTime();
         this.setCurrentDate();
+        // 额外下拉填充：导出与简报服务器选择
+        this.populateAuxServerSelects();
     }
 
     // 填充服务器选择下拉框
@@ -741,6 +743,106 @@ class BossRefreshApp {
         
         return Array.from(allBossLevels).sort((a, b) => a - b);
     }
+
+    // 辅助：填充导出与简报的服务器选择框
+    populateAuxServerSelects() {
+        const fill = (selectId, includeAll = false) => {
+            const el = document.getElementById(selectId);
+            if (!el) return;
+            el.innerHTML = '';
+            if (includeAll) {
+                const optAll = document.createElement('option');
+                optAll.value = 'ALL';
+                optAll.textContent = '全部服务器';
+                el.appendChild(optAll);
+            } else {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '请选择服务器';
+                el.appendChild(opt);
+            }
+            Object.keys(this.servers).forEach(server => {
+                const option = document.createElement('option');
+                option.value = server;
+                option.textContent = server;
+                el.appendChild(option);
+            });
+        };
+        fill('exportServerSelect', false);
+        fill('briefServerSelect', true);
+    }
+
+    // 获取某服务器在指定日期的等级->时间数组映射
+    getServerDateData(serverName, dateStr) {
+        if (!this.servers[serverName]) return {};
+        const map = {};
+        Object.keys(this.servers[serverName]).forEach(level => {
+            const dates = this.servers[serverName][level];
+            if (dates && dates[dateStr] && Array.isArray(dates[dateStr]) && dates[dateStr].length) {
+                map[level] = dates[dateStr];
+            }
+        });
+        return map;
+    }
+
+    // 构建导出JSON对象
+    buildExportObject(serverName, dateStr) {
+        return {
+            type: 'nykd-boss-timeline',
+            version: '1.0',
+            server: serverName,
+            date: dateStr,
+            data: this.getServerDateData(serverName, dateStr)
+        };
+    }
+
+    // 导入时间线JSON对象（merge/replace）
+    importTimelineObject(obj, mode = 'merge') {
+        if (!obj || obj.type !== 'nykd-boss-timeline' || !obj.server || !obj.date || !obj.data || typeof obj.data !== 'object') {
+            throw new Error('导入JSON格式不正确');
+        }
+        const server = obj.server;
+        const dateStr = obj.date;
+        const data = obj.data;
+        if (!this.servers[server]) {
+            this.servers[server] = {};
+        }
+        Object.keys(data).forEach(level => {
+            if (!this.servers[server][level]) this.servers[server][level] = {};
+        });
+        if (mode === 'replace') {
+            Object.keys(this.servers[server]).forEach(level => {
+                if (this.servers[server][level][dateStr]) delete this.servers[server][level][dateStr];
+            });
+        }
+        Object.keys(data).forEach(level => {
+            const times = data[level];
+            if (Array.isArray(times) && times.length) {
+                this.servers[server][level][dateStr] = times;
+            }
+        });
+        this.saveToStorage();
+    }
+
+    // 生成每日简报文本
+    generateDailyBriefText(dateStr, serverOrAll = 'ALL') {
+        const servers = serverOrAll === 'ALL' ? Object.keys(this.servers) : [serverOrAll];
+        let out = `【${dateStr}】BOSS时间线简报`;
+        servers.forEach((serverName) => {
+            out += `\n\n# ${serverName}`;
+            const levelMap = this.getServerDateData(serverName, dateStr);
+            const levels = Object.keys(levelMap).sort((a,b)=>parseInt(a)-parseInt(b));
+            if (levels.length === 0) {
+                out += `\n（无记录）`;
+                return;
+            }
+            levels.forEach(level => {
+                const times = levelMap[level];
+                out += `\n- ${level}级：${times.join(' / ')}`;
+            });
+        });
+        return out;
+    }
 }
 
 // 全局应用实例
@@ -1236,13 +1338,13 @@ function deleteBossImageConfirm(bossLevel) {
         }
     }
 }
- 
- // 关闭图片模态框
- function closeImageModal() {
-     document.getElementById('imageModal').style.display = 'none';
- }
- 
- // 页面可见性变化时更新当前时间
+
+// 关闭图片模态框
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
+
+// 页面可见性变化时更新当前时间
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden && app) {
         app.setCurrentTime();
@@ -1480,14 +1582,54 @@ function toggleServerManagement() {
 function toggleBossManagement() {
     const form = document.getElementById('bossManagementForm');
     const serverForm = document.getElementById('serverManagementForm');
+    const importExport = document.getElementById('importExportSection');
+    const brief = document.getElementById('dailyBriefSection');
     
     if (form.style.display === 'none' || form.style.display === '') {
         form.style.display = 'block';
         serverForm.style.display = 'none';
+        if (importExport) importExport.style.display = 'none';
+        if (brief) brief.style.display = 'none';
         loadBossList();
         loadManageBossLevels();
     } else {
         form.style.display = 'none';
+    }
+}
+
+function toggleImportExport() {
+    const section = document.getElementById('importExportSection');
+    const serverForm = document.getElementById('serverManagementForm');
+    const bossForm = document.getElementById('bossManagementForm');
+    const brief = document.getElementById('dailyBriefSection');
+    
+    if (section.style.display === 'none' || section.style.display === '') {
+        section.style.display = 'block';
+        serverForm.style.display = 'none';
+        bossForm.style.display = 'none';
+        if (brief) brief.style.display = 'none';
+        app.populateAuxServerSelects();
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+function toggleDailyBrief() {
+    const section = document.getElementById('dailyBriefSection');
+    const serverForm = document.getElementById('serverManagementForm');
+    const bossForm = document.getElementById('bossManagementForm');
+    const importExport = document.getElementById('importExportSection');
+    
+    if (section.style.display === 'none' || section.style.display === '') {
+        section.style.display = 'block';
+        serverForm.style.display = 'none';
+        bossForm.style.display = 'none';
+        if (importExport) importExport.style.display = 'none';
+        app.populateAuxServerSelects();
+        const input = document.getElementById('briefDateInput');
+        if (input && !input.value) input.value = app.getTodayString();
+    } else {
+        section.style.display = 'none';
     }
 }
 
@@ -1809,3 +1951,55 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function onGenerateBrief() {
+    const serverSel = document.getElementById('briefServerSelect').value || 'ALL';
+    const dateStr = document.getElementById('briefDateInput').value || app.getTodayString();
+    const text = app.generateDailyBriefText(dateStr, serverSel);
+    const out = document.getElementById('dailyBriefOutput');
+    if (out) out.value = text;
+}
+
+function copyBriefToClipboard() {
+    const txt = document.getElementById('dailyBriefOutput')?.value || '';
+    if (!txt) { alert('请先生成简报'); return; }
+    navigator.clipboard.writeText(txt).then(()=>alert('已复制简报'));    
+}
+
+function onExportServerTimeline() {
+    const server = document.getElementById('exportServerSelect').value;
+    const dateStr = document.getElementById('exportDateInput').value;
+    if (!server || !dateStr) { alert('请选择服务器与日期'); return; }
+    const obj = app.buildExportObject(server, dateStr);
+    const json = JSON.stringify(obj, null, 2);
+    const preview = document.getElementById('exportJsonPreview');
+    if (preview) preview.value = json;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nykd-${server}-${dateStr}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function onCopyExportJSON() {
+    const txt = document.getElementById('exportJsonPreview')?.value || '';
+    if (!txt) { alert('请先生成导出JSON'); return; }
+    navigator.clipboard.writeText(txt).then(()=>alert('已复制导出JSON'));
+}
+
+function onImportTimeline() {
+    const mode = document.getElementById('importModeSelect').value || 'merge';
+    const txt = document.getElementById('importJsonText').value;
+    if (!txt) { alert('请粘贴JSON'); return; }
+    try {
+        const obj = JSON.parse(txt);
+        app.importTimelineObject(obj, mode);
+        alert('导入完成');
+        app.populateAuxServerSelects();
+        showBossList();
+    } catch (e) {
+        alert('导入失败：' + e.message);
+    }
+}
