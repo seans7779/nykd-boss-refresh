@@ -1,7 +1,7 @@
 // 诺亚传说BOSS刷新时间计算器
 class BossRefreshApp {
     constructor() {
-        this.BOSS_REFRESH_INTERVAL = 4 * 60 + 35; // 4小时35分钟，转换为分钟
+        this.BOSS_REFRESH_INTERVAL = 4 * 60 + 35;
         this.DAILY_REFRESH_COUNT = 4; // 每天刷新4次
         this.reminderEnabled = false;
         this.reminderInterval = null;
@@ -46,6 +46,9 @@ class BossRefreshApp {
                 this.servers = { ...this.servers, ...data.servers };
                 this.bossImages = data.bossImages || {};
                 this.reminderEnabled = data.reminderEnabled || false;
+                if (typeof data.refreshIntervalMinutes === 'number' && data.refreshIntervalMinutes > 0) {
+                    this.BOSS_REFRESH_INTERVAL = data.refreshIntervalMinutes;
+                }
                 
                 // 如果之前开启了提醒功能，重新启动
                 if (this.reminderEnabled) {
@@ -66,6 +69,7 @@ class BossRefreshApp {
             servers: this.servers,
             bossImages: this.bossImages,
             reminderEnabled: this.reminderEnabled,
+            refreshIntervalMinutes: this.BOSS_REFRESH_INTERVAL,
             lastUpdate: new Date().toISOString()
         };
         localStorage.setItem('nykd-boss-data', JSON.stringify(data));
@@ -79,6 +83,61 @@ class BossRefreshApp {
         this.setCurrentDate();
         // 额外下拉填充：导出与简报服务器选择
         this.populateAuxServerSelects();
+        this.initializeRefreshIntervalUI();
+    }
+
+    initializeRefreshIntervalUI() {
+        const select = document.getElementById('refreshIntervalPreset');
+        const customBox = document.getElementById('customIntervalInputs');
+        const h = document.getElementById('customHours');
+        const m = document.getElementById('customMinutes');
+        if (!select || !customBox || !h || !m) return;
+        let preset = '';
+        if (this.BOSS_REFRESH_INTERVAL === 275) {
+            preset = '275';
+        } else if (this.BOSS_REFRESH_INTERVAL === 125) {
+            preset = '125';
+        } else {
+            preset = 'custom';
+            const hours = Math.floor(this.BOSS_REFRESH_INTERVAL / 60);
+            const minutes = this.BOSS_REFRESH_INTERVAL % 60;
+            h.value = hours;
+            m.value = minutes;
+        }
+        select.value = preset;
+        customBox.style.display = preset === 'custom' ? 'flex' : 'none';
+        select.addEventListener('change', () => this.handleRefreshIntervalChange());
+        h.addEventListener('input', () => {
+            if (select.value === 'custom') this.handleRefreshIntervalChange();
+        });
+        m.addEventListener('input', () => {
+            if (select.value === 'custom') this.handleRefreshIntervalChange();
+        });
+    }
+
+    handleRefreshIntervalChange() {
+        const select = document.getElementById('refreshIntervalPreset');
+        const customBox = document.getElementById('customIntervalInputs');
+        const h = document.getElementById('customHours');
+        const m = document.getElementById('customMinutes');
+        if (!select || !customBox || !h || !m) return;
+        const val = select.value;
+        if (val === 'custom') {
+            customBox.style.display = 'flex';
+            const hh = parseInt(h.value) || 0;
+            const mm = parseInt(m.value) || 0;
+            this.BOSS_REFRESH_INTERVAL = hh * 60 + mm;
+        } else {
+            customBox.style.display = 'none';
+            this.BOSS_REFRESH_INTERVAL = parseInt(val);
+        }
+        this.saveToStorage();
+    }
+
+    formatIntervalLabel(minutes) {
+        const hh = Math.floor(minutes / 60);
+        const mm = minutes % 60;
+        return `${hh}小时${mm}分钟`;
     }
 
     // 填充服务器选择下拉框
@@ -917,7 +976,7 @@ function calculateBossTime() {
         html += `<li ${timeClass}>第${item.refreshNumber}次：${item.time}${dateInfo}${nextIndicator}</li>`;
     });
     
-    html += '</ul><p style="font-size: 12px; color: #888;">刷新间隔：4小时30分钟</p>';
+    html += `</ul><p style="font-size: 12px; color: #888;">刷新间隔：${app.formatIntervalLabel(app.BOSS_REFRESH_INTERVAL)}</p>`;
     
     resultContent.innerHTML = html;
     resultDiv.style.display = 'block';
