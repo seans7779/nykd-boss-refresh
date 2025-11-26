@@ -204,48 +204,73 @@ class BossRefreshApp {
         document.getElementById('selectedDate').value = today;
     }
 
-    // 计算当天所有BOSS刷新时间
-    calculateDailyBossRefreshTimes(serverName, bossLevel, selectedDate, currentHour, currentMinute, remainingMinutes, refreshCount) {
-        const now = new Date();
-        now.setHours(currentHour, currentMinute, 0, 0);
-        
-        // 计算下次刷新时间
-        const nextRefresh = new Date(now.getTime() + remainingMinutes * 60000);
-        
-        // 计算当天所有4次刷新时间
+    // 计算当天所有BOSS刷新时间（基于下一次刷新时间 + 刷新间隔），避开01:30～07:00
+    calculateDailyBossRefreshTimes(serverName, bossLevel, selectedDate, nextRefreshTimeStr) {
+        const [year, month, day] = selectedDate.split('-').map(Number);
+        const [nh, nm] = (nextRefreshTimeStr || '00:00').split(':').map(Number);
+        const nextRefresh = new Date(year, month - 1, day, nh || 0, nm || 0, 0, 0);
+        const nextAdjusted = this.adjustForQuietWindow(nextRefresh);
+        const dayStart = new Date(year, month - 1, day, 0, 0, 0, 0);
+        const dayEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
         const refreshTimes = [];
-        
-        // 根据下次是第几次刷新，反推第一次刷新时间
-        const firstRefreshTime = new Date(nextRefresh.getTime() - (refreshCount - 1) * this.BOSS_REFRESH_INTERVAL * 60000);
-        
-        // 计算当天4次刷新时间
-        for (let i = 0; i < this.DAILY_REFRESH_COUNT; i++) {
-            const refreshTime = new Date(firstRefreshTime.getTime() + i * this.BOSS_REFRESH_INTERVAL * 60000);
-            refreshTimes.push({
-                time: this.formatTime(refreshTime),
-                date: this.formatDate(refreshTime),
-                refreshNumber: i + 1,
-                isNext: i + 1 === refreshCount
-            });
+
+        // 向前回溯至当日开始
+        let t = new Date(nextAdjusted);
+        while (t >= dayStart) {
+            if (!this.isInQuietWindow(t)) {
+                refreshTimes.push(new Date(t));
+            }
+            t = new Date(t.getTime() - this.BOSS_REFRESH_INTERVAL * 60000);
         }
-        
-        // 确定保存数据的日期 - 使用第一次刷新的日期作为基准
-        const baseDate = this.formatDate(firstRefreshTime);
-        
-        // 保存到本地存储 - 按第一次刷新的日期保存
-        if (!this.servers[serverName][bossLevel][baseDate]) {
-            this.servers[serverName][bossLevel][baseDate] = [];
+
+        // 向后推进至当日结束
+        t = new Date(nextAdjusted.getTime() + this.BOSS_REFRESH_INTERVAL * 60000);
+        while (t <= dayEnd) {
+            if (!this.isInQuietWindow(t)) {
+                refreshTimes.push(new Date(t));
+            }
+            t = new Date(t.getTime() + this.BOSS_REFRESH_INTERVAL * 60000);
         }
-        this.servers[serverName][bossLevel][baseDate] = refreshTimes.map(item => item.time);
+
+        // 排序并映射输出结构
+        refreshTimes.sort((a, b) => a - b);
+        const formatted = refreshTimes.map(rt => ({
+            time: this.formatTime(rt),
+            date: this.formatDate(rt),
+            isNext: rt.getTime() === nextAdjusted.getTime()
+        }));
+
+        // 保存到本地存储 - 按当日保存
+        if (!this.servers[serverName][bossLevel][selectedDate]) {
+            this.servers[serverName][bossLevel][selectedDate] = [];
+        }
+        this.servers[serverName][bossLevel][selectedDate] = formatted.map(item => item.time);
         this.saveToStorage();
-        
+
         return {
-            nextRefresh: this.formatTime(nextRefresh),
-            nextRefreshDate: this.formatDate(nextRefresh),
-            nextRefreshNumber: refreshCount,
-            baseDate: baseDate, // 添加基准日期信息
-            allRefreshTimes: refreshTimes
+            nextRefresh: this.formatTime(nextAdjusted),
+            nextRefreshDate: selectedDate,
+            allRefreshTimes: formatted,
+            adjusted: nextAdjusted.getTime() !== nextRefresh.getTime()
         };
+    }
+
+    // 是否在禁止刷新时段（01:30～07:00）
+    isInQuietWindow(date) {
+        const h = date.getHours();
+        const m = date.getMinutes();
+        const minutes = h * 60 + m;
+        const start = 1 * 60 + 30; // 01:30
+        const end = 7 * 60;        // 07:00
+        return minutes >= start && minutes < end;
+    }
+
+    // 将处于禁止时段的时间调整到当天07:00
+    adjustForQuietWindow(date) {
+        if (this.isInQuietWindow(date)) {
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 7, 0, 0, 0);
+        }
+        return date;
     }
 
     // 获取服务器BOSS的刷新时间记录
@@ -919,15 +944,13 @@ function calculateBossTime() {
     const selectedDate = document.getElementById('selectedDate').value;
     const currentHour = parseInt(document.getElementById('currentHour').value);
     const currentMinute = parseInt(document.getElementById('currentMinute').value);
-    const remainingHours = parseInt(document.getElementById('remainingHours').value) || 0;
-    const remainingMinutes = parseInt(document.getElementById('remainingMinutes').value) || 0;
-    const refreshCount = parseInt(document.getElementById('refreshCount').value);
+    const nextRefreshTimeStr = document.getElementById('nextRefreshTime').value;
     
     // 计算总剩余分钟数
-    const totalRemainingMinutes = remainingHours * 60 + remainingMinutes;
+    // 不再使用剩余时间与刷新序号
     
     // 验证输入
-    if (!server || !bossLevel || !selectedDate || isNaN(currentHour) || isNaN(currentMinute) || !refreshCount) {
+    if (!server || !bossLevel || !selectedDate || isNaN(currentHour) || isNaN(currentMinute) || !nextRefreshTimeStr) {
         alert('请填写完整信息！');
         return;
     }
@@ -937,18 +960,10 @@ function calculateBossTime() {
         return;
     }
     
-    if (remainingHours < 0 || remainingHours > 23 || remainingMinutes < 0 || remainingMinutes > 59) {
-        alert('请输入正确的剩余时间格式！');
-        return;
-    }
-    
-    if (refreshCount < 1 || refreshCount > 4) {
-        alert('刷新次数必须在1-4之间！');
-        return;
-    }
+    // nextRefreshTime 由浏览器控件保证格式
     
     // 计算刷新时间
-    const result = app.calculateDailyBossRefreshTimes(server, bossLevel, selectedDate, currentHour, currentMinute, totalRemainingMinutes, refreshCount);
+    const result = app.calculateDailyBossRefreshTimes(server, bossLevel, selectedDate, nextRefreshTimeStr);
     
     // 显示结果
     const resultDiv = document.getElementById('result');
@@ -958,13 +973,12 @@ function calculateBossTime() {
         <p><strong>服务器：</strong>${server}</p>
         <p><strong>BOSS等级：</strong>${bossLevel}级</p>
         <p><strong>当前日期：</strong>${selectedDate}</p>
-        <p><strong>剩余时间：</strong>${remainingHours}小时${remainingMinutes}分钟</p>
-        <p><strong>下次刷新时间：</strong>${result.nextRefresh} (${result.nextRefreshDate}) - 第${result.nextRefreshNumber}次</p>
+        <p><strong>下次刷新时间：</strong>${result.nextRefresh} (${result.nextRefreshDate})</p>
     `;
     
     // 如果基准日期与当前日期不同，显示提示
-    if (result.baseDate !== selectedDate) {
-        html += `<p style="color: #ff6666;"><strong>注意：</strong>BOSS刷新周期跨天，以${result.baseDate}为基准日期</p>`;
+    if (result.adjusted) {
+        html += `<p style="color: #ff6666;"><strong>注意：</strong>01:30～07:00为禁止刷新时段，已将下次刷新调整为当天07:00</p>`;
     }
     
     html += `<p><strong>完整刷新周期：</strong></p><ul>`;
@@ -972,8 +986,7 @@ function calculateBossTime() {
     result.allRefreshTimes.forEach(item => {
         const nextIndicator = item.isNext ? ' ← 下次刷新' : '';
         const timeClass = item.isNext ? 'style="color: #00ff88; font-weight: bold;"' : '';
-        const dateInfo = item.date !== result.baseDate ? ` (${item.date})` : '';
-        html += `<li ${timeClass}>第${item.refreshNumber}次：${item.time}${dateInfo}${nextIndicator}</li>`;
+        html += `<li ${timeClass}>${item.time}${nextIndicator}</li>`;
     });
     
     html += `</ul><p style="font-size: 12px; color: #888;">刷新间隔：${app.formatIntervalLabel(app.BOSS_REFRESH_INTERVAL)}</p>`;

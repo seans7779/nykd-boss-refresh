@@ -1018,10 +1018,9 @@
         </div>
 
         <div class="form-group">
-            <label for="remainingTime">距离下次刷新剩余时间：</label>
+            <label for="nextRefreshTime">下一次BOSS刷新时间：</label>
             <div class="time-inputs">
-                <input type="number" id="remainingHours" placeholder="小时" min="0" max="23">
-                <input type="number" id="remainingMinutes" placeholder="分钟" min="0" max="59">
+                <input type="time" id="nextRefreshTime" placeholder="HH:MM">
             </div>
         </div>
 
@@ -1038,16 +1037,7 @@
             </div>
         </div>
 
-        <div class="form-group">
-            <label for="refreshCount">下次是第几次刷新：</label>
-            <select id="refreshCount">
-                <option value="">请选择</option>
-                <option value="1">第1次刷新</option>
-                <option value="2">第2次刷新</option>
-                <option value="3">第3次刷新</option>
-                <option value="4">第4次刷新</option>
-            </select>
-        </div>
+        
 
         <button class="btn" onclick="calculateBossTime()">计算当天刷新时间</button>
         <button class="btn btn-secondary" onclick="showBossList()">查看所有BOSS时间</button>
