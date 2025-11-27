@@ -560,12 +560,7 @@ class BossRefreshApp {
             return;
         }
 
-        // 获取本地时区偏移量
-        const timezoneOffset = now.getTimezoneOffset();
-        const timezoneHours = Math.floor(Math.abs(timezoneOffset) / 60);
-        const timezoneMinutes = Math.abs(timezoneOffset) % 60;
-        const timezoneSign = timezoneOffset <= 0 ? '+' : '-';
-        const timezoneId = `UTC${timezoneSign}${String(timezoneHours).padStart(2, '0')}${String(timezoneMinutes).padStart(2, '0')}`;
+        const timezoneId = 'Asia/Shanghai';
 
         let icsContent = [
             'BEGIN:VCALENDAR',
@@ -576,8 +571,8 @@ class BossRefreshApp {
             'BEGIN:VTIMEZONE',
             `TZID:${timezoneId}`,
             'BEGIN:STANDARD',
-            `TZOFFSETFROM:${timezoneSign}${String(timezoneHours).padStart(2, '0')}${String(timezoneMinutes).padStart(2, '0')}`,
-            `TZOFFSETTO:${timezoneSign}${String(timezoneHours).padStart(2, '0')}${String(timezoneMinutes).padStart(2, '0')}`,
+            'TZOFFSETFROM:+0800',
+            'TZOFFSETTO:+0800',
             'DTSTART:19700101T000000',
             'END:STANDARD',
             'END:VTIMEZONE'
@@ -741,12 +736,21 @@ class BossRefreshApp {
             return;
         }
 
+        const timezoneId = 'Asia/Shanghai';
         let icsContent = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
             'PRODID:-//NYKD BOSS Refresh//NONSGML v1.0//EN',
             'CALSCALE:GREGORIAN',
-            'METHOD:PUBLISH'
+            'METHOD:PUBLISH',
+            'BEGIN:VTIMEZONE',
+            `TZID:${timezoneId}`,
+            'BEGIN:STANDARD',
+            'TZOFFSETFROM:+0800',
+            'TZOFFSETTO:+0800',
+            'DTSTART:19700101T000000',
+            'END:STANDARD',
+            'END:VTIMEZONE'
         ];
 
         futureEvents.forEach(event => {
@@ -757,8 +761,8 @@ class BossRefreshApp {
             icsContent.push(
                 'BEGIN:VEVENT',
                 `UID:${uid}`,
-                `DTSTART:${startTime}`,
-                `DTEND:${endTime}`,
+                `DTSTART;TZID=${timezoneId}:${startTime}`,
+                `DTEND;TZID=${timezoneId}:${endTime}`,
                 `SUMMARY:BOSS刷新 - ${event.server} ${event.bossLevel}级`,
                 `DESCRIPTION:服务器: ${event.server}\\n等级: ${event.bossLevel}级\\n第${event.refreshIndex}次刷新`,
                 `LOCATION:${event.server}服务器`,
