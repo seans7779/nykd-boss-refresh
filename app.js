@@ -95,8 +95,8 @@ class BossRefreshApp {
         let preset = '';
         if (this.BOSS_REFRESH_INTERVAL === 275) {
             preset = '275';
-        } else if (this.BOSS_REFRESH_INTERVAL === 125) {
-            preset = '125';
+        } else if (this.BOSS_REFRESH_INTERVAL === 150) {
+            preset = '150';
         } else {
             preset = 'custom';
             const hours = Math.floor(this.BOSS_REFRESH_INTERVAL / 60);
