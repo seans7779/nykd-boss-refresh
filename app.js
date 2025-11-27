@@ -204,7 +204,6 @@ class BossRefreshApp {
         document.getElementById('selectedDate').value = today;
     }
 
-    // 计算当天所有BOSS刷新时间（基于下一次刷新时间 + 刷新间隔），避开01:30～07:00
     calculateDailyBossRefreshTimes(serverName, bossLevel, selectedDate, nextRefreshTimeStr) {
         const [year, month, day] = selectedDate.split('-').map(Number);
         const [nh, nm] = (nextRefreshTimeStr || '00:00').split(':').map(Number);
@@ -247,6 +246,43 @@ class BossRefreshApp {
         this.servers[serverName][bossLevel][selectedDate] = formatted.map(item => item.time);
         this.saveToStorage();
 
+        return {
+            nextRefresh: this.formatTime(nextAdjusted),
+            nextRefreshDate: selectedDate,
+            allRefreshTimes: formatted,
+            adjusted: nextAdjusted.getTime() !== nextRefresh.getTime()
+        };
+    }
+
+    calculateDailyBossRefreshTimesFromRemaining(serverName, bossLevel, selectedDate, currentHour, currentMinute, totalRemainingMinutes) {
+        const [year, month, day] = selectedDate.split('-').map(Number);
+        const now = new Date(year, month - 1, day, currentHour || 0, currentMinute || 0, 0, 0);
+        const nextRefresh = new Date(now.getTime() + (totalRemainingMinutes || 0) * 60000);
+        const nextAdjusted = this.adjustForQuietWindow(nextRefresh);
+        const dayStart = new Date(year, month - 1, day, 0, 0, 0, 0);
+        const dayEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+        const refreshTimes = [];
+        let t = new Date(nextAdjusted);
+        while (t >= dayStart) {
+            if (!this.isInQuietWindow(t)) refreshTimes.push(new Date(t));
+            t = new Date(t.getTime() - this.BOSS_REFRESH_INTERVAL * 60000);
+        }
+        t = new Date(nextAdjusted.getTime() + this.BOSS_REFRESH_INTERVAL * 60000);
+        while (t <= dayEnd) {
+            if (!this.isInQuietWindow(t)) refreshTimes.push(new Date(t));
+            t = new Date(t.getTime() + this.BOSS_REFRESH_INTERVAL * 60000);
+        }
+        refreshTimes.sort((a, b) => a - b);
+        const formatted = refreshTimes.map(rt => ({
+            time: this.formatTime(rt),
+            date: this.formatDate(rt),
+            isNext: rt.getTime() === nextAdjusted.getTime()
+        }));
+        if (!this.servers[serverName][bossLevel][selectedDate]) {
+            this.servers[serverName][bossLevel][selectedDate] = [];
+        }
+        this.servers[serverName][bossLevel][selectedDate] = formatted.map(item => item.time);
+        this.saveToStorage();
         return {
             nextRefresh: this.formatTime(nextAdjusted),
             nextRefreshDate: selectedDate,
@@ -944,13 +980,14 @@ function calculateBossTime() {
     const selectedDate = document.getElementById('selectedDate').value;
     const currentHour = parseInt(document.getElementById('currentHour').value);
     const currentMinute = parseInt(document.getElementById('currentMinute').value);
-    const nextRefreshTimeStr = document.getElementById('nextRefreshTime').value;
+    const remainingHours = parseInt(document.getElementById('remainingHours').value) || 0;
+    const remainingMinutes = parseInt(document.getElementById('remainingMinutes').value) || 0;
     
     // 计算总剩余分钟数
-    // 不再使用剩余时间与刷新序号
+    const totalRemainingMinutes = remainingHours * 60 + remainingMinutes;
     
     // 验证输入
-    if (!server || !bossLevel || !selectedDate || isNaN(currentHour) || isNaN(currentMinute) || !nextRefreshTimeStr) {
+    if (!server || !bossLevel || !selectedDate || isNaN(currentHour) || isNaN(currentMinute) || (isNaN(remainingHours) && isNaN(remainingMinutes))) {
         alert('请填写完整信息！');
         return;
     }
@@ -960,10 +997,13 @@ function calculateBossTime() {
         return;
     }
     
-    // nextRefreshTime 由浏览器控件保证格式
+    if (remainingHours < 0 || remainingHours > 23 || remainingMinutes < 0 || remainingMinutes > 59) {
+        alert('请输入正确的剩余时间格式！');
+        return;
+    }
     
     // 计算刷新时间
-    const result = app.calculateDailyBossRefreshTimes(server, bossLevel, selectedDate, nextRefreshTimeStr);
+    const result = app.calculateDailyBossRefreshTimesFromRemaining(server, bossLevel, selectedDate, currentHour, currentMinute, totalRemainingMinutes);
     
     // 显示结果
     const resultDiv = document.getElementById('result');
