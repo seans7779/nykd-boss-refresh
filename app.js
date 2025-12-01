@@ -474,9 +474,9 @@ class BossRefreshApp {
             const minutesUntil = Math.floor(timeDiff / (1000 * 60));
             
             // 如果距离刷新还有10分钟，发送提醒
-            if (minutesUntil === 10) {
+            if (minutesUntil === 20) {
                 const title = 'BOSS刷新提醒';
-                const body = `${event.server} ${event.bossLevel}级BOSS 将在10分钟后刷新 (${event.timeStr})`;
+                const body = `${event.server} ${event.bossLevel}级BOSS 将在20分钟后刷新 (${event.timeStr})`;
                 this.sendNotification(title, body);
             }
         });
@@ -597,7 +597,7 @@ class BossRefreshApp {
                 'TRANSP:OPAQUE',
                 `DTSTAMP:${this.formatDateForICS(now)}`,
                 'BEGIN:VALARM',
-                'TRIGGER:-PT10M',
+                'TRIGGER:-PT30M',
                 'ACTION:DISPLAY',
                 `DESCRIPTION:BOSS即将刷新 - ${event.server} ${event.bossLevel}级`,
                 'END:VALARM',
@@ -615,6 +615,63 @@ class BossRefreshApp {
         // 显示导出摘要
         const summary = this.generateExportSummary(futureEvents);
         alert(summary);
+    }
+
+    generateAlarmICSFile(selectedDate) {
+        const allEvents = this.getAllBossRefreshTimes(selectedDate);
+        const now = new Date();
+        const futureEvents = allEvents.filter(event => event.time > now);
+        if (futureEvents.length === 0) {
+            alert('该日期没有未来的BOSS刷新事件用于设置闹钟');
+            return;
+        }
+
+        const timezoneId = 'Asia/Shanghai';
+        let icsContent = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//NYKD BOSS Refresh Alarm//NONSGML v1.0//EN',
+            'CALSCALE:GREGORIAN',
+            'METHOD:PUBLISH',
+            'BEGIN:VTIMEZONE',
+            `TZID:${timezoneId}`,
+            'BEGIN:STANDARD',
+            'TZOFFSETFROM:+0800',
+            'TZOFFSETTO:+0800',
+            'DTSTART:19700101T000000',
+            'END:STANDARD',
+            'END:VTIMEZONE'
+        ];
+
+        futureEvents.forEach(event => {
+            const startTime = this.formatDateForICS(event.time);
+            const endTime = this.formatDateForICS(new Date(event.time.getTime() + 10 * 60 * 1000));
+            const uid = `alarm-${event.server}-${event.bossLevel}-${event.refreshIndex}-${startTime}@nykd-boss-refresh`;
+            icsContent.push(
+                'BEGIN:VEVENT',
+                `UID:${uid}`,
+                `DTSTART;TZID=${timezoneId}:${startTime}`,
+                `DTEND;TZID=${timezoneId}:${endTime}`,
+                `SUMMARY:闹钟 - ${event.server} ${event.bossLevel}级 BOSS刷新`,
+                `DESCRIPTION:闹钟将在刷新前30分钟触发\\n服务器: ${event.server}\\n等级: ${event.bossLevel}级\\n时间: ${event.timeStr}`,
+                `LOCATION:${event.server}服务器`,
+                'STATUS:CONFIRMED',
+                'TRANSP:OPAQUE',
+                `DTSTAMP:${this.formatDateForICS(now)}`,
+                'BEGIN:VALARM',
+                'TRIGGER:-PT30M',
+                'ACTION:AUDIO',
+                'ATTACH;VALUE=URI:BELL',
+                `DESCRIPTION:闹钟 - ${event.server} ${event.bossLevel}级 BOSS刷新`,
+                'END:VALARM',
+                'END:VEVENT'
+            );
+        });
+
+        icsContent.push('END:VCALENDAR');
+        const icsString = icsContent.join('\r\n');
+        this.downloadICSFile(icsString, `BOSS闹钟-${selectedDate}.ics`);
+        alert('闹钟ICS已导出：导入到手机日历/提醒应用即可作为一次性闹钟使用（提前30分钟）。');
     }
 
     // 生成导出摘要
@@ -650,7 +707,7 @@ class BossRefreshApp {
             summary += `• ${level}级：${bossStats[level]}个事件\n`;
         });
         
-        summary += `\n💡 提示：每个事件都包含10分钟提前提醒`;
+        summary += `\n💡 提示：每个事件都包含30分钟提前提醒`;
         
         return summary;
     }
@@ -709,7 +766,7 @@ class BossRefreshApp {
 3. 这样可以确保日历中只有最新的事件
 
 ⚠️ 注意事项：
-- ICS文件中的事件会自动包含10分钟提前提醒
+        - ICS文件中的事件会自动包含30分钟提前提醒
 - 过期事件不会自动从手机日历中删除
 - 需要定期手动清理或重新导入
         `.trim();
@@ -770,7 +827,7 @@ class BossRefreshApp {
                 'TRANSP:OPAQUE',
                 `DTSTAMP:${this.formatDateForICS(now)}`,
                 'BEGIN:VALARM',
-                'TRIGGER:-PT10M',
+                'TRIGGER:-PT30M',
                 'ACTION:DISPLAY',
                 `DESCRIPTION:BOSS即将刷新 - ${event.server} ${event.bossLevel}级`,
                 'END:VALARM',
@@ -1670,6 +1727,11 @@ function toggleReminders() {
 function exportToCalendar() {
     const selectedDate = document.getElementById('timelineDate')?.value || app.getTodayString();
     app.generateICSFile(selectedDate);
+}
+
+function exportToAlarms() {
+    const selectedDate = document.getElementById('timelineDate')?.value || app.getTodayString();
+    app.generateAlarmICSFile(selectedDate);
 }
 
 // 显示日历清理说明
